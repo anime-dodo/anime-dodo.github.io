@@ -75,9 +75,15 @@
         return new JASSUB({
           video: videoEl,
           subContent: assContent,
-          workerUrl: 'jassub/worker/worker.js',
-          wasmUrl: 'jassub/wasm/jassub-worker.wasm',
-          modernWasmUrl: 'jassub/wasm/jassub-worker-modern.wasm',
+          // Chemins ABSOLUS (avec "/" au début) : le fichier .wasm est en
+          // fait chargé depuis l'intérieur du Worker, où un chemin relatif
+          // se résout par rapport à la position du Worker
+          // (/jassub/worker/worker.js) et non par rapport à la page — un
+          // chemin relatif donnait donc une mauvaise URL (404). Un chemin
+          // absolu se résout pareil dans les deux cas.
+          workerUrl: '/jassub/worker/worker.js',
+          wasmUrl: '/jassub/wasm/jassub-worker.wasm',
+          modernWasmUrl: '/jassub/wasm/jassub-worker-modern.wasm',
           // Désactive la résolution des polices via le système local
           // (Local Font Access API) : pas nécessaire ici — JASSUB embarque
           // déjà une police par défaut (jassub/default.woff2) utilisée pour
