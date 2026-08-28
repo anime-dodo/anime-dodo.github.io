@@ -89,6 +89,13 @@
           workerUrl: localWorkerUrl(JASSUB_BASE + 'worker/worker.js'),
           wasmUrl: JASSUB_BASE + 'wasm/jassub-worker.wasm',
           modernWasmUrl: JASSUB_BASE + 'wasm/jassub-worker-modern.wasm',
+          // Désactive la résolution des polices via le système local
+          // (Local Font Access API) : cette fonctionnalité provoque une
+          // erreur ("could not be cloned") dans ce contexte et n'est de
+          // toute façon pas nécessaire — JASSUB embarque déjà une police
+          // par défaut (dist/default.woff2) utilisée pour tout texte dont
+          // la police n'est pas fournie explicitement.
+          queryFonts: false,
         });
       } catch (e) {
         console.error('JASSUB : accroche échouée, repli sur l\'overlay texte.', e);
