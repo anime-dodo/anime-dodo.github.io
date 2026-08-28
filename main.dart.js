@@ -27511,7 +27511,7 @@ aZz(a){var s=0,r=A.I(t.jC),q,p=2,o=[],n,m,l,k,j,i
 var $async$azg=A.J(function(b,c){if(b===1){o.push(c)
 s=p}for(;;)switch(s){case 0:p=4
 s=7
-return A.L(A.aKM(A.eI("https://animevault-server-747m.onrender.com/api/videos/"+a,0,null)).pC(0,B.EJ),$async$azg)
+return A.L(A.aKM(A.eI("https://animedodo-server.onrender.com/api/videos/"+a,0,null)).pC(0,B.EJ),$async$azg)
 case 7:n=c
 if(n.b!==200){q=A.t(t.S,t.aa)
 s=1
@@ -91645,7 +91645,7 @@ return A.fK(s,B.Gc,B.w,B.E2,s,s,s,s,s)},
 $S:564}
 A.Hp.prototype={}
 A.azh.prototype={
-$2(a,b){var s,r,q=null,p="https://animevault-server-747m.onrender.com",o=A.qx(a,q),n=t.nA.a(b),m=n,l=A.cE(m==null?q:J.aX(m,"video"))
+$2(a,b){var s,r,q=null,p="https://animedodo-server.onrender.com",o=A.qx(a,q),n=t.nA.a(b),m=n,l=A.cE(m==null?q:J.aX(m,"video"))
 if(o==null||l==null)return
 m=n
 s=A.cE(m==null?q:J.aX(m,"subtitle"))
