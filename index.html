@@ -69,10 +69,13 @@
     // domaine (restriction navigateur), même si le fichier existe bien sur
     // le CDN. On contourne ça avec un petit script "relais" en mémoire
     // (blob, donc considéré comme venant de notre propre origine) qui se
-    // contente d'importer le vrai script distant via importScripts.
+    // contente d'importer le vrai script distant. Le worker de JASSUB est
+    // un module ES ("type: module"), donc on utilise "import" et non
+    // "importScripts" (réservé aux workers classiques, refusé ici par le
+    // navigateur).
     function localWorkerUrl(remoteUrl) {
       const blob = new Blob(
-        [`importScripts(${JSON.stringify(remoteUrl)});`],
+        [`import ${JSON.stringify(remoteUrl)};`],
         { type: 'application/javascript' }
       );
       return URL.createObjectURL(blob);
