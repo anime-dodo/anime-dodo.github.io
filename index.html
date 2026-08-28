@@ -55,66 +55,33 @@
     Rendu ASS fidèle pour les sous-titres (police/couleurs/position d'origine
     préservées) via JASSUB, accroché directement à l'élément <video> créé par
     le lecteur (voir video_player_screen.dart, _attachAssSubtitlesIfNeeded).
-    Chargé depuis jsDelivr (CDN), version figée pour éviter qu'une mise à
-    jour de la librairie casse silencieusement le site plus tard.
-    Si ce script ne charge pas (pas de réseau, bloqueur...), l'app retombe
-    automatiquement sur son ancien overlay texte — rien ne casse.
+
+    Contrairement à une tentative précédente, JASSUB n'est PAS chargé depuis
+    un CDN à l'exécution : la librairie (et ses propres dépendances internes,
+    comme "abslink") est regroupée à l'avance en un seul fichier autonome
+    (voir web/jassub/, généré via esbuild) et hébergée directement avec le
+    site. Charger les morceaux séparément depuis un CDN provoquait une
+    erreur interne à la librairie (les navigateurs bloquent aussi la
+    création d'un Worker distant, ce qui forçait des contournements fragiles
+    en plus). Le fichier autonome évite tout ça.
+    Si ce script ne charge pas, l'app retombe automatiquement sur son ancien
+    overlay texte — rien ne casse.
   -->
-  <!--
-    Table de correspondance pour les dépendances internes de JASSUB (des
-    noms de paquets "nus" que le navigateur ne sait pas résoudre tout
-    seul). On charge la version BRUTE de jassub.js (pas le bundle "+esm"
-    généré automatiquement par jsDelivr) : ce bundle automatique casse un
-    mécanisme interne de la librairie (le marquage des fonctions à
-    transférer au Worker via postMessage), provoquant une erreur
-    "DataCloneError". La version brute + cette table de correspondance
-    évite ce problème.
-  -->
-  <script type="importmap">
-    {
-      "imports": {
-        "rvfc-polyfill": "https://cdn.jsdelivr.net/npm/rvfc-polyfill@1.0.8/+esm",
-        "abslink": "https://cdn.jsdelivr.net/npm/abslink@1.2.2/src/abslink.js",
-        "abslink/w3c": "https://cdn.jsdelivr.net/npm/abslink@1.2.2/adapters/w3c.js",
-        "lfa-ponyfill": "https://cdn.jsdelivr.net/npm/lfa-ponyfill@1.1.1/+esm"
-      }
-    }
-  </script>
   <script type="module">
-    import JASSUB from 'https://cdn.jsdelivr.net/npm/jassub@2.5.14/dist/jassub.js';
-
-    const JASSUB_BASE = 'https://cdn.jsdelivr.net/npm/jassub@2.5.14/dist/';
-
-    // Un Worker ne peut pas être créé directement depuis une URL d'un autre
-    // domaine (restriction navigateur), même si le fichier existe bien sur
-    // le CDN. On contourne ça avec un petit script "relais" en mémoire
-    // (blob, donc considéré comme venant de notre propre origine) qui se
-    // contente d'importer le vrai script distant. Le worker de JASSUB est
-    // un module ES ("type: module"), donc on utilise "import" et non
-    // "importScripts" (réservé aux workers classiques, refusé ici par le
-    // navigateur).
-    function localWorkerUrl(remoteUrl) {
-      const blob = new Blob(
-        [`import ${JSON.stringify(remoteUrl)};`],
-        { type: 'application/javascript' }
-      );
-      return URL.createObjectURL(blob);
-    }
+    import JASSUB from './jassub/jassub.js';
 
     window.attachJassub = function (videoEl, assContent) {
       try {
         return new JASSUB({
           video: videoEl,
           subContent: assContent,
-          workerUrl: localWorkerUrl(JASSUB_BASE + 'worker/worker.js'),
-          wasmUrl: JASSUB_BASE + 'wasm/jassub-worker.wasm',
-          modernWasmUrl: JASSUB_BASE + 'wasm/jassub-worker-modern.wasm',
+          workerUrl: 'jassub/worker/worker.js',
+          wasmUrl: 'jassub/wasm/jassub-worker.wasm',
+          modernWasmUrl: 'jassub/wasm/jassub-worker-modern.wasm',
           // Désactive la résolution des polices via le système local
-          // (Local Font Access API) : cette fonctionnalité provoque une
-          // erreur ("could not be cloned") dans ce contexte et n'est de
-          // toute façon pas nécessaire — JASSUB embarque déjà une police
-          // par défaut (dist/default.woff2) utilisée pour tout texte dont
-          // la police n'est pas fournie explicitement.
+          // (Local Font Access API) : pas nécessaire ici — JASSUB embarque
+          // déjà une police par défaut (jassub/default.woff2) utilisée pour
+          // tout texte dont la police n'est pas fournie explicitement.
           queryFonts: false,
         });
       } catch (e) {
