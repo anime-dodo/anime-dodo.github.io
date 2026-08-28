@@ -50,5 +50,54 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <!--
+    Rendu ASS fidèle pour les sous-titres (police/couleurs/position d'origine
+    préservées) via JASSUB, accroché directement à l'élément <video> créé par
+    le lecteur (voir video_player_screen.dart, _attachAssSubtitlesIfNeeded).
+    Chargé depuis jsDelivr (CDN), version figée pour éviter qu'une mise à
+    jour de la librairie casse silencieusement le site plus tard.
+    Si ce script ne charge pas (pas de réseau, bloqueur...), l'app retombe
+    automatiquement sur son ancien overlay texte — rien ne casse.
+  -->
+  <script type="module">
+    import JASSUB from 'https://cdn.jsdelivr.net/npm/jassub@2.5.14/+esm';
+
+    const JASSUB_BASE = 'https://cdn.jsdelivr.net/npm/jassub@2.5.14/dist/';
+
+    // Un Worker ne peut pas être créé directement depuis une URL d'un autre
+    // domaine (restriction navigateur), même si le fichier existe bien sur
+    // le CDN. On contourne ça avec un petit script "relais" en mémoire
+    // (blob, donc considéré comme venant de notre propre origine) qui se
+    // contente d'importer le vrai script distant via importScripts.
+    function localWorkerUrl(remoteUrl) {
+      const blob = new Blob(
+        [`importScripts(${JSON.stringify(remoteUrl)});`],
+        { type: 'application/javascript' }
+      );
+      return URL.createObjectURL(blob);
+    }
+
+    window.attachJassub = function (videoEl, assContent) {
+      try {
+        return new JASSUB({
+          video: videoEl,
+          subContent: assContent,
+          workerUrl: localWorkerUrl(JASSUB_BASE + 'worker/worker.js'),
+          wasmUrl: JASSUB_BASE + 'wasm/jassub-worker.wasm',
+          modernWasmUrl: JASSUB_BASE + 'wasm/jassub-worker-modern.wasm',
+        });
+      } catch (e) {
+        console.error('JASSUB : accroche échouée, repli sur l\'overlay texte.', e);
+        return null;
+      }
+    };
+
+    window.detachJassub = function (instance) {
+      if (instance && typeof instance.destroy === 'function') {
+        instance.destroy().catch(() => {});
+      }
+    };
+  </script>
 </body>
 </html>
