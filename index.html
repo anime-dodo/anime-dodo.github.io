@@ -76,7 +76,13 @@
   -->
   <script src="/octopus/subtitles-octopus.js"></script>
   <script>
-    window.attachJassub = function (videoEl, assContent) {
+    // onError (optionnel, fourni par Dart) : SubtitlesOctopus l'appelle si
+    // le rendu échoue APRÈS l'accroche (ex : fichier .ass corrompu pour cet
+    // épisode précis, plantage du Worker) — un cas que notre try/catch côté
+    // Dart ne peut pas voir puisqu'il est asynchrone. Ça permet à l'app de
+    // basculer sur son overlay texte de secours même dans ce cas-là, au
+    // lieu de rester sans aucun sous-titre.
+    window.attachJassub = function (videoEl, assContent, onError) {
       try {
         return new SubtitlesOctopus({
           video: videoEl,
@@ -85,9 +91,14 @@
           // Le fichier .wasm (subtitles-octopus-worker.wasm) est chargé
           // automatiquement par le worker depuis son propre dossier — pas
           // besoin de l'indiquer séparément.
+          onError: function (err) {
+            console.error('SubtitlesOctopus : erreur de rendu, repli sur l\'overlay texte.', err);
+            if (onError) onError(String((err && err.message) || err || 'erreur inconnue'));
+          },
         });
       } catch (e) {
         console.error('SubtitlesOctopus : accroche échouée, repli sur l\'overlay texte.', e);
+        if (onError) onError(String((e && e.message) || e || 'erreur inconnue'));
         return null;
       }
     };
