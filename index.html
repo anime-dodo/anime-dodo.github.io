@@ -53,52 +53,48 @@
 
   <!--
     Rendu ASS fidèle pour les sous-titres (police/couleurs/position d'origine
-    préservées) via JASSUB, accroché directement à l'élément <video> créé par
-    le lecteur (voir video_player_screen.dart, _attachAssSubtitlesIfNeeded).
+    préservées) via SubtitlesOctopus (le moteur original "libass-wasm"),
+    accroché directement à l'élément <video> créé par le lecteur (voir
+    video_player_screen.dart, _attachAssSubtitlesIfNeeded).
 
-    Contrairement à une tentative précédente, JASSUB n'est PAS chargé depuis
-    un CDN à l'exécution : la librairie (et ses propres dépendances internes,
-    comme "abslink") est regroupée à l'avance en un seul fichier autonome
-    (voir web/jassub/, généré via esbuild) et hébergée directement avec le
-    site. Charger les morceaux séparément depuis un CDN provoquait une
-    erreur interne à la librairie (les navigateurs bloquent aussi la
-    création d'un Worker distant, ce qui forçait des contournements fragiles
-    en plus). Le fichier autonome évite tout ça.
+    On utilisait auparavant "JASSUB" (un fork de cette même librairie), mais
+    JASSUB tente de lire les pixels de la vidéo via l'API VideoFrame pour
+    détecter son espace colorimétrique — ce qui provoque une erreur de
+    sécurité ("tainted sources") car nos vidéos (hébergées sur StreamTape,
+    un autre domaine) n'ont pas les en-têtes CORS nécessaires. Ça cassait le
+    rendu des sous-titres de façon quasi systématique (écran noir). La
+    librairie originale SubtitlesOctopus n'a PAS cette fonctionnalité : elle
+    ne lit jamais les pixels de la vidéo, seulement sa position de lecture
+    (currentTime), donc aucun souci de CORS possible.
+
+    Les fichiers (voir web/octopus/) sont téléchargés depuis le paquet npm
+    "libass-wasm" et hébergés directement avec le site (pas de CDN à
+    l'exécution, pour les mêmes raisons qu'avant : un Worker doit être
+    chargé depuis la même origine que la page).
     Si ce script ne charge pas, l'app retombe automatiquement sur son ancien
     overlay texte — rien ne casse.
   -->
-  <script type="module">
-    import JASSUB from './jassub/jassub.js';
-
+  <script src="/octopus/subtitles-octopus.js"></script>
+  <script>
     window.attachJassub = function (videoEl, assContent) {
       try {
-        return new JASSUB({
+        return new SubtitlesOctopus({
           video: videoEl,
           subContent: assContent,
-          // Chemins ABSOLUS (avec "/" au début) : le fichier .wasm est en
-          // fait chargé depuis l'intérieur du Worker, où un chemin relatif
-          // se résout par rapport à la position du Worker
-          // (/jassub/worker/worker.js) et non par rapport à la page — un
-          // chemin relatif donnait donc une mauvaise URL (404). Un chemin
-          // absolu se résout pareil dans les deux cas.
-          workerUrl: '/jassub/worker/worker.js',
-          wasmUrl: '/jassub/wasm/jassub-worker.wasm',
-          modernWasmUrl: '/jassub/wasm/jassub-worker-modern.wasm',
-          // Désactive la résolution des polices via le système local
-          // (Local Font Access API) : pas nécessaire ici — JASSUB embarque
-          // déjà une police par défaut (jassub/default.woff2) utilisée pour
-          // tout texte dont la police n'est pas fournie explicitement.
-          queryFonts: false,
+          workerUrl: '/octopus/subtitles-octopus-worker.js',
+          // Le fichier .wasm (subtitles-octopus-worker.wasm) est chargé
+          // automatiquement par le worker depuis son propre dossier — pas
+          // besoin de l'indiquer séparément.
         });
       } catch (e) {
-        console.error('JASSUB : accroche échouée, repli sur l\'overlay texte.', e);
+        console.error('SubtitlesOctopus : accroche échouée, repli sur l\'overlay texte.', e);
         return null;
       }
     };
 
     window.detachJassub = function (instance) {
-      if (instance && typeof instance.destroy === 'function') {
-        instance.destroy().catch(() => {});
+      if (instance && typeof instance.dispose === 'function') {
+        instance.dispose();
       }
     };
   </script>
