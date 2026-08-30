@@ -1078,6 +1078,7 @@ found in the LICENSE file.
 --------------------------------------------------------------------------------
 args
 csslib
+logging
 
 Copyright 2013, the Dart project authors. 
 
@@ -5302,6 +5303,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------------
 flutter_lints
+go_router
 plugin_platform_interface
 pointer_interceptor
 pointer_interceptor_platform_interface
