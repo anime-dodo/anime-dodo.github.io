@@ -50,5 +50,64 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <!--
+    Rendu ASS fidèle pour les sous-titres (police/couleurs/position d'origine
+    préservées) via SubtitlesOctopus (le moteur original "libass-wasm"),
+    accroché directement à l'élément <video> créé par le lecteur (voir
+    video_player_screen.dart, _attachAssSubtitlesIfNeeded).
+
+    On utilisait auparavant "JASSUB" (un fork de cette même librairie), mais
+    JASSUB tente de lire les pixels de la vidéo via l'API VideoFrame pour
+    détecter son espace colorimétrique — ce qui provoque une erreur de
+    sécurité ("tainted sources") car nos vidéos (hébergées sur StreamTape,
+    un autre domaine) n'ont pas les en-têtes CORS nécessaires. Ça cassait le
+    rendu des sous-titres de façon quasi systématique (écran noir). La
+    librairie originale SubtitlesOctopus n'a PAS cette fonctionnalité : elle
+    ne lit jamais les pixels de la vidéo, seulement sa position de lecture
+    (currentTime), donc aucun souci de CORS possible.
+
+    Les fichiers (voir web/octopus/) sont téléchargés depuis le paquet npm
+    "libass-wasm" et hébergés directement avec le site (pas de CDN à
+    l'exécution, pour les mêmes raisons qu'avant : un Worker doit être
+    chargé depuis la même origine que la page).
+    Si ce script ne charge pas, l'app retombe automatiquement sur son ancien
+    overlay texte — rien ne casse.
+  -->
+  <script src="/octopus/subtitles-octopus.js"></script>
+  <script>
+    // onError (optionnel, fourni par Dart) : SubtitlesOctopus l'appelle si
+    // le rendu échoue APRÈS l'accroche (ex : fichier .ass corrompu pour cet
+    // épisode précis, plantage du Worker) — un cas que notre try/catch côté
+    // Dart ne peut pas voir puisqu'il est asynchrone. Ça permet à l'app de
+    // basculer sur son overlay texte de secours même dans ce cas-là, au
+    // lieu de rester sans aucun sous-titre.
+    window.attachJassub = function (videoEl, assContent, onError) {
+      try {
+        return new SubtitlesOctopus({
+          video: videoEl,
+          subContent: assContent,
+          workerUrl: '/octopus/subtitles-octopus-worker.js',
+          // Le fichier .wasm (subtitles-octopus-worker.wasm) est chargé
+          // automatiquement par le worker depuis son propre dossier — pas
+          // besoin de l'indiquer séparément.
+          onError: function (err) {
+            console.error('SubtitlesOctopus : erreur de rendu, repli sur l\'overlay texte.', err);
+            if (onError) onError(String((err && err.message) || err || 'erreur inconnue'));
+          },
+        });
+      } catch (e) {
+        console.error('SubtitlesOctopus : accroche échouée, repli sur l\'overlay texte.', e);
+        if (onError) onError(String((e && e.message) || e || 'erreur inconnue'));
+        return null;
+      }
+    };
+
+    window.detachJassub = function (instance) {
+      if (instance && typeof instance.dispose === 'function') {
+        instance.dispose();
+      }
+    };
+  </script>
 </body>
 </html>
