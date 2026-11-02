@@ -959,6 +959,16 @@
   .player-view.subtitles-off .player-subtitle { display: none !important; }
   .player-view.subtitles-off canvas.libassjs-canvas,
   .player-view.subtitles-off .libassjs-canvas-parent { display: none !important; }
+  /* Les sous-titres ASS (libass/Octopus) ne doivent JAMAIS être recouverts
+     par les éléments d'UI du lecteur (dégradé du haut, écran "en pause"
+     façon Netflix après 10s, etc.) — avant ce correctif, .libassjs-canvas-parent
+     n'avait pas de z-index explicite (donc "auto"), et se retrouvait sous
+     .player-idle-overlay (z-index: 3) : visuellement, la vidéo s'assombrit
+     à la pause et le sous-titre a l'air de disparaître, alors qu'en réalité
+     il reste bien affiché (dessiné) en dessous — juste invisible derrière
+     le voile noir. On le passe au-dessus de tout le reste de l'UI. */
+  .libassjs-canvas-parent, canvas.libassjs-canvas { z-index: 10 !important; }
+  .player-subtitle { z-index: 10; }
 
   /* Gros bouton lecture central : dégradé radial violet + halo, comme
      _buildStartOverlay côté Flutter — disparaît définitivement une fois la
