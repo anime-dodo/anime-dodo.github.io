@@ -3729,6 +3729,13 @@ function buildEpisodeCard(anime, number, entry, overrideLabel) {
 let playerAssCues = null;
 let playerCueUpdateHandler = null;
 let playerOctopusInstance = null;
+// Mémorise le texte .ass actuellement attaché, pour pouvoir forcer un
+// nouveau rendu complet après un changement de plein écran (voir plus bas,
+// écouteur 'fullscreenchange') : contourne un bug du moteur Octopus/libass
+// où un resize (entrée/sortie plein écran) efface le canvas du sous-titre
+// sans forcément le redessiner tout de suite, laissant la phrase en cours
+// invisible jusqu'à la prochaine réplique.
+let playerCurrentAssContent = null;
 let playerSubtitlesEnabled = true;
 // Langue de sous-titres actuellement choisie (utilisé seulement quand le
 // serveur expose plusieurs pistes via entry.subtitles — voir populateAvMenu).
@@ -4312,6 +4319,23 @@ function bindPlayerControlsOnce() {
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   updateFullscreenIcon();
 
+  // Bug Octopus/libass : un resize (déclenché par l'entrée/la sortie du
+  // plein écran) efface le canvas du sous-titre ASS, mais le moteur ne le
+  // redessine pas toujours tout de suite (il ne redessine que s'il pense
+  // que le sous-titre a changé) — la phrase alors affichée disparaît et ne
+  // revient qu'à la prochaine réplique. On force un rendu propre en
+  // ré-attachant le même texte .ass juste après la transition plein écran
+  // (après un court délai, le temps que la mise en page/le canvas se
+  // stabilisent) : ça ne change ni taille ni position, juste le fait que
+  // le moteur redessine vraiment la réplique en cours.
+  document.addEventListener('fullscreenchange', () => {
+    if (!playerOctopusInstance || !playerCurrentAssContent) return;
+    setTimeout(() => {
+      if (!playerOctopusInstance) return;
+      try { playerOctopusInstance.setTrack(playerCurrentAssContent); } catch (e) {}
+    }, 300);
+  });
+
   body.addEventListener('mousemove', showControls);
 }
 
@@ -4534,6 +4558,7 @@ function attachAssSubtitles(subtitleText) {
       });
       if (!instance) { fallbackToPlainTextCues(subtitleText); return; }
       playerOctopusInstance = instance;
+      playerCurrentAssContent = subtitleText;
       applyPlayerSubtitleVisibility();
     })
     .catch(() => fallbackToPlainTextCues(subtitleText));
@@ -4544,6 +4569,7 @@ function detachAssSubtitles() {
     window.detachJassub(playerOctopusInstance);
     playerOctopusInstance = null;
   }
+  playerCurrentAssContent = null;
 }
 
 // Repli texte brut (voir parseAssDialogue côté Flutter) : juste le texte
